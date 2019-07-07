@@ -3,9 +3,55 @@
 {% block body %}
 <div class="container">
     <div class="row">
-        <div class="col-12">
-            <h1>Hello world</h1>
-            <p>Lorem ipsum dolor, sit amet consectetur adipisicing elit. Culpa laborum possimus, laudantium molestiae quia iste quasi. Officiis excepturi provident quod, eligendi vero asperiores laudantium obcaecati optio saepe fugiat sed nisi.</p>
+        <div class="col-md-4 ml-auto mr-auto text-center" id="">
+            <button class="btn btn-link btn-qr">Scan QR</button>
+            <div id="screenshot" style="text-align:center;">
+                <video style="background: rgba(255,255,255,0.5);border: 1px solid #ccc; width:400px; height: 300px" class="videostream" autoplay=""></video>
+                <img style="background: rgba(255,255,255,0.5);border: 1px solid #ccc; width:400px; height: 300px" id="screenshot-img">
+                <p><button class="capture-button">Capture video</button></p>
+                <p><button id="screenshot-button" disabled>Take screenshot</button></p>
+            </div>
+            <script>
+            const captureVideoButton = document.querySelector('#screenshot .capture-button');
+            const screenshotButton = document.querySelector('#screenshot-button');
+            const img = document.querySelector('#screenshot img');
+            const video = document.querySelector('#screenshot video');
+
+            const canvas = document.createElement('canvas');
+
+            const constraints = {
+                video: true
+            }
+            captureVideoButton.onclick = function() {
+                navigator.mediaDevices.getUserMedia(constraints).
+                    then(handleSuccess).catch(function(err){
+                        alert(err)
+                    });
+            };
+
+            screenshotButton.onclick = video.onclick = function() {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                // Other browsers will fall back to image/png
+                img.src = canvas.toDataURL('image/webp');
+
+                let imageData = canvas.getContext('2d').getImageData(0, 0, 400, 300);
+                console.log(imageData)
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                if (code) {
+                    console.log("Found QR code", code);
+                } else {
+                    alert('No QR detected')
+                }
+                
+            };
+
+            function handleSuccess(stream) {
+                screenshotButton.disabled = false;
+                video.srcObject = stream;
+            }
+            </script>
         </div>
     </div>
 </div>

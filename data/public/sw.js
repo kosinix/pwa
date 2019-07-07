@@ -7,6 +7,7 @@ var filesToCache = [
   '/js/popper.min.js',
   '/js/bootstrap.min.js',
   '/js/vue.min.js',
+  '/js/jsQR.js',
   '/js/main.js'
 ];
 
