@@ -12,7 +12,7 @@ let router = express.Router();
 
 router.get('/', async (req, res, next) => {
     try {
-        return res.render('index.html')
+        return res.render('main.html')
     } catch (err) {
         next(err);
     }

@@ -1,58 +1,15 @@
-{% extends "document.html" %}
-
-{% block body %}
 <div class="container">
     <div class="row">
-        <div class="col-md-4 ml-auto mr-auto text-center" id="">
-            <button class="btn btn-link btn-qr">Scan QR</button>
-            <div id="screenshot" style="text-align:center;">
-                <video style="background: rgba(255,255,255,0.5);border: 1px solid #ccc; width:400px; height: 300px" class="videostream" autoplay=""></video>
-                <img style="background: rgba(255,255,255,0.5);border: 1px solid #ccc; width:400px; height: 300px" id="screenshot-img">
-                <p><button class="capture-button">Capture video</button></p>
-                <p><button id="screenshot-button" disabled>Take screenshot</button></p>
+        <div class="col-md-4 ml-auto mr-auto text-center pt-5">
+            <div v-if="internalAccounts.length>0">
+                <ul>
+                    <li v-for="account in internalAccounts">{{'{{generateOtp(account)}} {{account.issuer}} ({{decodeURIComponent(account.label)}})'}}</li>
+                </ul>
             </div>
-            <script>
-            const captureVideoButton = document.querySelector('#screenshot .capture-button');
-            const screenshotButton = document.querySelector('#screenshot-button');
-            const img = document.querySelector('#screenshot img');
-            const video = document.querySelector('#screenshot video');
-
-            const canvas = document.createElement('canvas');
-
-            const constraints = {
-                video: true
-            }
-            captureVideoButton.onclick = function() {
-                navigator.mediaDevices.getUserMedia(constraints).
-                    then(handleSuccess).catch(function(err){
-                        alert(err)
-                    });
-            };
-
-            screenshotButton.onclick = video.onclick = function() {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0);
-                // Other browsers will fall back to image/png
-                img.src = canvas.toDataURL('image/webp');
-
-                let imageData = canvas.getContext('2d').getImageData(0, 0, 400, 300);
-                console.log(imageData)
-                const code = jsQR(imageData.data, imageData.width, imageData.height);
-                if (code) {
-                    console.log("Found QR code", code);
-                } else {
-                    alert('No QR detected')
-                }
-                
-            };
-
-            function handleSuccess(stream) {
-                screenshotButton.disabled = false;
-                video.srcObject = stream;
-            }
-            </script>
+            <div v-else>
+                <p>No accounts yet.</p>
+                <p><button v-on:click="goAdd" class="btn btn-sm btn-primary">Add +</button></p>
+            </div>
         </div>
     </div>
 </div>
-{% endblock %}

@@ -22,41 +22,76 @@
     <link rel="stylesheet" href="{{app.url}}/css/style.css" />
 </head>
 <body class="{{bodyClass}}">
+    <div id="app">
+        <nav class="navbar fixed-top navbar-expand-lg navbar-light bg-light">
+            <div class="container">
+                <a class="navbar-brand" href="/">Authenticator</a>
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
 
-<nav class="navbar fixed-top navbar-expand-lg navbar-light bg-light">
-    <div class="container">
-        <a class="navbar-brand" href="/">Authenticator</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav ml-auto ">
-                <li class="nav-item">
-                    <a class="nav-link" href="/">Home</a>
-                </li>
-            </ul>
-            
-        </div>
-    </div>
-</nav>
-{% block body %}{% endblock %}
-{# <footer class="footer d-print-none">
-    <div class="container">
-        <div class="row">
-            <div class="col-md-12">
-                <div>App 1.0</div>
+                <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav ml-auto ">
+                        <li class="nav-item">
+                            <router-link to="/settings" className="nav-link">Settings</router-link>
+                        </li>
+                    </ul>
+                    
+                </div>
             </div>
-        </div>
+        </nav>
+        <router-view></router-view>
+
+        {% block body %}{% endblock %}
+        {# <footer class="footer d-print-none">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div>App 1.0</div>
+                    </div>
+                </div>
+            </div>
+        </footer> #}
     </div>
-</footer> #}
-{% block scripts %}
-<script src="{{app.url}}/js/jquery-3.3.1.min.js"></script>
-<script src="{{app.url}}/js/popper.min.js"></script>
-<script src="{{app.url}}/js/bootstrap.min.js"></script>
-<script src="{{app.url}}/js/vue.min.js"></script>
-<script src="{{app.url}}/js/jsQR.js"></script>
-<script src="{{app.url}}/js/main.js"></script>
-{% endblock %}
+    {% block scripts %}
+        <script src="{{app.url}}/js/jquery-3.3.1.min.js"></script>
+        <script src="{{app.url}}/js/popper.min.js"></script>
+        <script src="{{app.url}}/js/bootstrap.min.js"></script>
+        <script src="{{app.url}}/js/vue.js"></script>
+        <script src="{{app.url}}/js/vue-router.js"></script>
+        <script src="{{app.url}}/js/jsQR.js"></script>
+        <script src="{{app.url}}/js/main.js"></script>
+
+        <script>
+        // 1. Define route components.
+        // These can be imported from other files
+        const Home = { template: "{% include 'index.html' %}" }
+        const Settings = { template: '<div>settings</div>' }
+
+        // 2. Define some routes
+        // Each route should map to a component. The "component" can
+        // either be an actual component constructor created via
+        // `Vue.extend()`, or just a component options object.
+        // We'll talk about nested routes later.
+        const routes = [
+            { path: '/', component: Home },
+            { path: '/settings', component: Settings }
+        ]
+
+        // 3. Create the router instance and pass the `routes` option
+        // You can pass in additional options here, but let's
+        // keep it simple for now.
+        const router = new VueRouter({
+            routes // short for `routes: routes`
+        })
+
+        // 4. Create and mount the root instance.
+        // Make sure to inject the router with the router option to make the
+        // whole app router-aware.
+        const app = new Vue({
+            router
+        }).$mount('#app')
+        </script>
+    {% endblock %}
 </body>
 </html>

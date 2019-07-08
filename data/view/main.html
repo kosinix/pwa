@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <meta name="theme-color" content="white"/>  
+    <meta name="apple-mobile-web-app-capable" content="yes">  
+    <meta name="apple-mobile-web-app-status-bar-style" content="black"> 
+    <meta name="apple-mobile-web-app-title" content="Hello World"> 
+    <meta name="msapplication-TileImage" content="images/hello-icon-144.png">  
+    <meta name="msapplication-TileColor" content="#FFFFFF">
+
+    <title>{{app.title}}</title>
+
+    <link rel="shortcut icon" href="{{app.url}}/favicon.png" />
+    <link rel="apple-touch-icon" href="{{app.url}}/images/hello-icon-152.png">   
+    <link rel="manifest" href="{{app.url}}/manifest.json">
+
+    <link rel="stylesheet" href="{{app.url}}/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="{{app.url}}/css/style.css" />
+</head>
+<body class="{{bodyClass}}">
+    <div id="app">
+        <nav class="navbar fixed-top navbar-expand-lg navbar-light bg-light">
+            <div class="container">
+                <router-link to="/" class="navbar-brand">Authenticator</router-link>
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav ml-auto ">
+                        <li class="nav-item">
+                            <router-link to="/add" class="nav-link">Add</router-link>
+                        </li>
+                        <li class="nav-item">
+                            <router-link to="/settings" class="nav-link">Settings</router-link>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        <router-view></router-view>
+    </div>
+    {% block scripts %}
+        <script src="{{app.url}}/js/jquery-3.3.1.min.js"></script>
+        <script src="{{app.url}}/js/popper.min.js"></script>
+        <script src="{{app.url}}/js/bootstrap.min.js"></script>
+        <script src="{{app.url}}/js/vue.js"></script>
+        <script src="{{app.url}}/js/vue-router.js"></script>
+        <script src="{{app.url}}/js/jsQR.js"></script>
+        <script src="{{app.url}}/js/localforage.min.js"></script>
+        <script src="{{app.url}}/js/otpauth.min.js"></script>
+        <script src="{{app.url}}/js/main.js"></script>
+        
+        <script>
+        
+        var accounts = []
+        
+        // 1. Define route components.
+        // These can be imported from other files
+        const Home = { 
+            template: `{% include 'index.html' %}`,
+            data: function(){
+                return {
+                    internalAccounts: []
+                }
+            },
+            props: {
+                accounts: {
+                    default: [],
+                    type: Array
+                },
+            },
+            created: function(){
+                var me = this;
+                me.internalAccounts = []
+                localforage.getItem('ecauthAccounts').then(function(value) {
+                    // This code runs once the value has been loaded
+                    // from the offline store.
+                    console.log(value);
+                    me.internalAccounts = value || [];
+                }).catch(function(err) {
+                    // This code runs if there were any errors
+                    console.log(err);
+                });
+            },
+            methods: {
+                generateOtp: function(account){
+                    console.log(account)
+                    let totp = new OTPAuth.TOTP({
+                        issuer: account.issuer,
+                        label: account.label,
+                        algorithm: 'SHA1',
+                        digits: 6,
+                        period: 30,
+                        secret: OTPAuth.Secret.fromB32(account.secret)
+                    });
+
+                    // Generate TOTP token.
+                    return totp.generate();
+                },
+                goAdd: function(){
+                    this.$router.push('/add')
+                }
+            } 
+        }
+        const Add = { 
+            template: `{% include 'add.html' %}`,
+            mounted: function(){
+                this.onCapture()
+            },
+            methods: {
+                onCapture: function(){
+                    var me = this;
+                    var video = document.createElement("video");
+                    var canvasElement = document.getElementById("canvas");
+                    var canvas = canvasElement.getContext("2d");
+                    
+                    // Use facingMode: environment to attemt to get the front camera on phones
+                    navigator.mediaDevices.getUserMedia({ video: { width:400, height:300, facingMode: "environment" } }).then(function(stream) {
+                        video.srcObject = stream;
+                        video.setAttribute("playsinline", true); // required to tell iOS safari we don't want fullscreen
+                        video.play();
+                        requestAnimationFrame(tick);
+                    }).catch(function(error){
+                        alert(error)
+                    })
+                    function drawLine(begin, end, color) {
+                        canvas.beginPath();
+                        canvas.moveTo(begin.x, begin.y);
+                        canvas.lineTo(end.x, end.y);
+                        canvas.lineWidth = 4;
+                        canvas.strokeStyle = color;
+                        canvas.stroke();
+                    }
+                    var stop = false;
+                    function tick() {
+                        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                            canvasElement.hidden = false;
+                            canvasElement.height = video.videoHeight;
+                            canvasElement.width = video.videoWidth;
+                            canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+                            var imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+                            var code = jsQR(imageData.data, imageData.width, imageData.height, {
+                                inversionAttempts: "dontInvert",
+                            });
+                            if (code) {
+                                drawLine(code.location.topLeftCorner, code.location.topRightCorner, "#FF3B58");
+                                drawLine(code.location.topRightCorner, code.location.bottomRightCorner, "#FF3B58");
+                                drawLine(code.location.bottomRightCorner, code.location.bottomLeftCorner, "#FF3B58");
+                                drawLine(code.location.bottomLeftCorner, code.location.topLeftCorner, "#FF3B58");
+                                stop = true;
+                                me.saveAccount(code)
+                            } else {
+                            }
+                        }
+                        if(!stop){
+                            requestAnimationFrame(tick);
+                        }
+                    }
+                },
+                parseUrl: function(url) {
+                    let parsedUrl = new URL(url)
+                    let params = new URLSearchParams(parsedUrl.search)
+                    return {
+                        label: parsedUrl.pathname.replace('//totp/','').replace('//hotp/',''),
+                        secret: params.get('secret'),
+                        issuer: params.get('issuer'),
+                    }
+                },
+                saveAccount: function(code){
+                    var me = this;
+                    var url = this.parseUrl(code.data)
+                    localforage.getItem('ecauthAccounts').then(function(value) {
+                        return value || []
+                    }).then(function(accounts){
+                        accounts.push(url)
+                        
+                        localforage.setItem('ecauthAccounts', accounts).then(function(value) {
+                            setTimeout(function(){
+                                me.$router.push('/')
+                            }, 1000)
+                        }).catch(function(err) {
+                            console.log(err);
+                        });
+
+                    }).catch(function(err) {
+                        console.log(err);
+                    });
+
+                    
+                }
+            } 
+        }
+        const Settings = { 
+            template: `{% include 'settings.html' %}` 
+        }
+
+        // 2. Define some routes
+        // Each route should map to a component. The "component" can
+        // either be an actual component constructor created via
+        // `Vue.extend()`, or just a component options object.
+        // We'll talk about nested routes later.
+        const routes = [
+            { path: '/', component: Home, props: { accounts: accounts } },
+            { path: '/add', component: Add },
+            { path: '/settings', component: Settings }
+        ]
+
+        // 3. Create the router instance and pass the `routes` option
+        // You can pass in additional options here, but let's
+        // keep it simple for now.
+        const router = new VueRouter({
+            routes // short for `routes: routes`
+        })
+
+        // 4. Create and mount the root instance.
+        // Make sure to inject the router with the router option to make the
+        // whole app router-aware.
+        const app = new Vue({
+            router
+        }).$mount('#app')
+        </script>
+    {% endblock %}
+</body>
+</html>
