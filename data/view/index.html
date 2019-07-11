@@ -1,14 +1,23 @@
 <div class="container">
     <div class="row">
-        <div class="col-md-4 ml-auto mr-auto text-center pt-5">
-            <div v-if="internalAccounts.length>0">
-                <ul>
-                    <li v-for="account in internalAccounts">{{'{{generateOtp(account)}} {{account.issuer}} ({{decodeURIComponent(account.label)}})'}}</li>
-                </ul>
+        <div class="col-md-6 ml-auto mr-auto text-center pt-3">
+            <div v-if="loading">
+                <p>Loading...</p>
             </div>
             <div v-else>
-                <p>No accounts yet.</p>
-                <p><button v-on:click="goAdd" class="btn btn-sm btn-primary">Add +</button></p>
+                <div v-if="accounts.length>0">
+                    <ul class="accounts">
+                        <li v-for="account in accounts" class="account text-left mb-3" v-if="generateOtp(account)">
+                            
+                            <div class="code">{{'{{generateOtp(account)}}'}} </div>
+                            <div class="issuer">{{'{{account.issuer}} ({{decodeURIComponent(account.label)}})'}}</div>
+                        </li>
+                    </ul>
+                </div>
+                <div v-else>
+                    <p>No accounts yet.</p>
+                    <p><button v-on:click="goAdd" class="btn btn-sm btn-primary">Add +</button></p>
+                </div>
             </div>
         </div>
     </div>

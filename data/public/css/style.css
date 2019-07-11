@@ -17,3 +17,22 @@ body, pre {
     display: inline-block;
     text-align: center;
 }
+
+.accounts {
+    list-style: none inside;
+    margin: 0;
+    padding: 0;
+}
+.accounts .account {
+    background: #ffffff;
+    padding: 15px;
+}
+.accounts .code {
+    color: #4285f4;
+    font-weight: 500;
+    font-size: xx-large;
+}
+.accounts .issuer {
+    color: #757575
+}
+

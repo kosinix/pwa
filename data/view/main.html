@@ -34,9 +34,9 @@
                         <li class="nav-item">
                             <router-link to="/add" class="nav-link">Add</router-link>
                         </li>
-                        <li class="nav-item">
+                        {# <li class="nav-item">
                             <router-link to="/settings" class="nav-link">Settings</router-link>
-                        </li>
+                        </li> #}
                     </ul>
                 </div>
             </div>
@@ -55,51 +55,65 @@
         <script src="{{app.url}}/js/main.js"></script>
         
         <script>
-        
-        var accounts = []
-        
+        var store = localforage.createInstance({
+            name: "pwaAuth"
+        });
+
         // 1. Define route components.
         // These can be imported from other files
         const Home = { 
             template: `{% include 'index.html' %}`,
             data: function(){
                 return {
-                    internalAccounts: []
+                    loading: false,
+                    accounts: []
                 }
             },
             props: {
-                accounts: {
-                    default: [],
-                    type: Array
+                xx: {
+                    default: '',
+                    type: String
                 },
             },
             created: function(){
                 var me = this;
-                me.internalAccounts = []
-                localforage.getItem('ecauthAccounts').then(function(value) {
-                    // This code runs once the value has been loaded
-                    // from the offline store.
-                    console.log(value);
-                    me.internalAccounts = value || [];
+                me.loading = true;
+                me.accounts = [];
+                store.getItem('accounts').then(function(value) {
+                    me.accounts = value || [];
                 }).catch(function(err) {
-                    // This code runs if there were any errors
                     console.log(err);
-                });
+                }).finally(function(){
+                    me.loading = false;
+                    setInterval(function(){
+                        me.$forceUpdate()
+                    }, 15000)
+                })
+            },
+            mounted: function(){
+
             },
             methods: {
                 generateOtp: function(account){
-                    console.log(account)
-                    let totp = new OTPAuth.TOTP({
-                        issuer: account.issuer,
-                        label: account.label,
-                        algorithm: 'SHA1',
-                        digits: 6,
-                        period: 30,
-                        secret: OTPAuth.Secret.fromB32(account.secret)
-                    });
-
-                    // Generate TOTP token.
-                    return totp.generate();
+                    try {
+                        let totp = new OTPAuth.TOTP({
+                            issuer: account.issuer,
+                            label: account.label,
+                            algorithm: 'SHA1',
+                            digits: 6,
+                            period: 30,
+                            secret: OTPAuth.Secret.fromB32(account.secret)
+                        });
+                        // Generate TOTP token.
+                        return totp.generate();
+                    } catch (err){
+                        return ''
+                    }
+                },
+                generateBar: function(){
+                    let counter1 = Math.floor(Date.now() / 1000 / 30);
+                    let counter2 = Date.now() / 1000 / 30;
+                    return 'width: '+Math.round((counter2 - counter1) * 100)+'px'
                 },
                 goAdd: function(){
                     this.$router.push('/add')
@@ -108,8 +122,21 @@
         }
         const Add = { 
             template: `{% include 'add.html' %}`,
+            data: function(){
+                return {
+                    stream: null
+                }
+            },
             mounted: function(){
                 this.onCapture()
+            },
+            beforeRouteLeave (to, from, next) {
+                // called when the route that renders this component is about to
+                // be navigated away from.
+                // has access to `this` component instance.
+                if(this.stream) this.stream.getTracks()[0].stop();
+
+                next()
             },
             methods: {
                 onCapture: function(){
@@ -121,6 +148,7 @@
                     // Use facingMode: environment to attemt to get the front camera on phones
                     navigator.mediaDevices.getUserMedia({ video: { width:400, height:300, facingMode: "environment" } }).then(function(stream) {
                         video.srcObject = stream;
+                        me.stream = stream
                         video.setAttribute("playsinline", true); // required to tell iOS safari we don't want fullscreen
                         video.play();
                         requestAnimationFrame(tick);
@@ -135,7 +163,7 @@
                         canvas.strokeStyle = color;
                         canvas.stroke();
                     }
-                    var stop = false;
+                    var stopLoop = false;
                     function tick() {
                         if (video.readyState === video.HAVE_ENOUGH_DATA) {
                             canvasElement.hidden = false;
@@ -151,12 +179,12 @@
                                 drawLine(code.location.topRightCorner, code.location.bottomRightCorner, "#FF3B58");
                                 drawLine(code.location.bottomRightCorner, code.location.bottomLeftCorner, "#FF3B58");
                                 drawLine(code.location.bottomLeftCorner, code.location.topLeftCorner, "#FF3B58");
-                                stop = true;
+                                stopLoop = true;
                                 me.saveAccount(code)
                             } else {
                             }
                         }
-                        if(!stop){
+                        if(!stopLoop){
                             requestAnimationFrame(tick);
                         }
                     }
@@ -172,19 +200,28 @@
                 },
                 saveAccount: function(code){
                     var me = this;
-                    var url = this.parseUrl(code.data)
-                    localforage.getItem('ecauthAccounts').then(function(value) {
+                    var newAccount = this.parseUrl(code.data)
+                    store.getItem('accounts').then(function(value) {
                         return value || []
                     }).then(function(accounts){
-                        accounts.push(url)
-                        
-                        localforage.setItem('ecauthAccounts', accounts).then(function(value) {
-                            setTimeout(function(){
+
+                        var found = accounts.filter(function(item){
+                            return item.issuer === newAccount.issuer && item.label === newAccount.label
+                        }).shift()
+
+                        if(!found) {
+                            accounts.push(newAccount)
+                            
+                            store.setItem('accounts', accounts).then(function(value) {
+                                
+                            }).catch(function(err) {
+                                console.log(err);
+                            }).finally(function(){
                                 me.$router.push('/')
-                            }, 1000)
-                        }).catch(function(err) {
-                            console.log(err);
-                        });
+                            })
+                        } else {
+                            me.$router.push('/')
+                        }
 
                     }).catch(function(err) {
                         console.log(err);
@@ -204,7 +241,7 @@
         // `Vue.extend()`, or just a component options object.
         // We'll talk about nested routes later.
         const routes = [
-            { path: '/', component: Home, props: { accounts: accounts } },
+            { path: '/', component: Home, props: { xx: '' } },
             { path: '/add', component: Add },
             { path: '/settings', component: Settings }
         ]
